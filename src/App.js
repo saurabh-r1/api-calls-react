@@ -10,12 +10,17 @@ function App() {
   const [retrying, setRetrying] = useState(false);
   const [retryTimeout, setRetryTimeout] = useState(null);
 
+  // Form input states
+  const [newMovieTitle, setNewMovieTitle] = useState("");
+  const [newMovieOpeningText, setNewMovieOpeningText] = useState("");
+  const [newMovieReleaseDate, setNewMovieReleaseDate] = useState("");
+
   const fetchMoviesHandler = useCallback(async () => {
     setError(null);
     setIsLoading(true);
 
     try {
-      const response = await fetch("https://swapi.dev/api/fils/");
+      const response = await fetch("https://swapi.dev/api/films/");
 
       if (!response.ok) {
         throw new Error("Something went wrong ....Retrying");
@@ -43,11 +48,11 @@ function App() {
         setRetryTimeout(setTimeout(fetchMoviesHandler, 5000));
       }
     }
-  }, []);
+  }, [retrying, retryTimeout]);
 
   useEffect(() => {
     fetchMoviesHandler();
-  }, []);
+  }, [fetchMoviesHandler]);
 
   const cancelRetryHandler = useCallback(() => {
     setRetrying(false);
@@ -57,6 +62,30 @@ function App() {
       clearTimeout(retryTimeout);
     }
   }, [retryTimeout]);
+
+  // Function to handle movie addition
+ // Function to handle movie addition
+const addMovieHandler = (event) => {
+  event.preventDefault();
+  const newMovie = {
+    title: newMovieTitle,
+    openingText: newMovieOpeningText,
+    releaseDate: newMovieReleaseDate,
+  };
+
+  // Log the new movie object to the console
+  console.log(newMovie);
+
+  // Assuming you have a function to add the new movie to the list
+  // You can replace this with your actual implementation
+  setMovies((prevMovies) => [...prevMovies, newMovie]);
+
+  // Clear the form inputs
+  setNewMovieTitle("");
+  setNewMovieOpeningText("");
+  setNewMovieReleaseDate("");
+};
+
 
   const content = useMemo(() => {
     if (isLoading) {
@@ -79,6 +108,31 @@ function App() {
   return (
     <React.Fragment>
       <section>
+        <form onSubmit={addMovieHandler}>
+          <label>Title:</label>
+          <input
+            type="text"
+            value={newMovieTitle}
+            onChange={(e) => setNewMovieTitle(e.target.value)}
+            required
+          />
+          <label>Opening Text:</label>
+          <textarea
+            value={newMovieOpeningText}
+            onChange={(e) => setNewMovieOpeningText(e.target.value)}
+            required
+          ></textarea>
+          <label>Release Date:</label>
+          <input
+            type="text"
+            value={newMovieReleaseDate}
+            onChange={(e) => setNewMovieReleaseDate(e.target.value)}
+            required
+          />
+          <button type="submit">Add Movie</button>
+        </form>
+        </section>
+        <section>
         <button onClick={fetchMoviesHandler} disabled={isLoading}>
           Fetch Movies
         </button>
