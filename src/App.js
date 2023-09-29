@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 
 import MoviesList from "./components/MoviesList";
+import AddMovie from "./components/AddMovie";
 import "./App.css";
 
 function App() {
@@ -10,17 +11,12 @@ function App() {
   const [retrying, setRetrying] = useState(false);
   const [retryTimeout, setRetryTimeout] = useState(null);
 
-  // Form input states
-  const [newMovieTitle, setNewMovieTitle] = useState("");
-  const [newMovieOpeningText, setNewMovieOpeningText] = useState("");
-  const [newMovieReleaseDate, setNewMovieReleaseDate] = useState("");
-
   const fetchMoviesHandler = useCallback(async () => {
     setError(null);
     setIsLoading(true);
 
     try {
-      const response = await fetch("https://swapi.dev/api/films/");
+      const response = await fetch("https://api-call-react-7d7f8-default-rtdb.firebaseio.com/movies.json");
 
       if (!response.ok) {
         throw new Error("Something went wrong ....Retrying");
@@ -28,12 +24,13 @@ function App() {
 
       const data = await response.json();
 
-      const transformedMovies = data.results.map((movieData) => ({
-        id: movieData.episode_id,
-        title: movieData.title,
-        openingText: movieData.opening_crawl,
-        releaseDate: movieData.release_date,
+      const transformedMovies = Object.keys(data).map((movieId) => ({
+        id: movieId,
+        title: data[movieId].title,
+        openingText: data[movieId].openingText,
+        releaseDate: data[movieId].releaseDate,
       }));
+
       setMovies(transformedMovies);
       setIsLoading(false);
       setRetrying(false);
@@ -63,29 +60,48 @@ function App() {
     }
   }, [retryTimeout]);
 
-  // Function to handle movie addition
- // Function to handle movie addition
-const addMovieHandler = (event) => {
-  event.preventDefault();
-  const newMovie = {
-    title: newMovieTitle,
-    openingText: newMovieOpeningText,
-    releaseDate: newMovieReleaseDate,
+  const addMovieHandler = async (newMovie) => {
+    // Make a POST request to add the new movie to the Firebase database
+    try {
+      const response = await fetch("https://api-call-react-7d7f8-default-rtdb.firebaseio.com/movies.json", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newMovie),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to add the movie.");
+      }
+
+      // Update the UI by adding the new movie to the list
+      setMovies((prevMovies) => [...prevMovies, newMovie]);
+    } catch (error) {
+      console.error(error);
+    }
   };
 
-  // Log the new movie object to the console
-  console.log(newMovie);
+  const deleteMovieHandler = async (movieId) => {
+    // Make a DELETE request to remove the movie from the Firebase database
+    try {
+      const response = await fetch(
+        `https://api-call-react-7d7f8-default-rtdb.firebaseio.com/movies/${movieId}.json`,
+        {
+          method: "DELETE",
+        }
+      );
 
-  // Assuming you have a function to add the new movie to the list
-  // You can replace this with your actual implementation
-  setMovies((prevMovies) => [...prevMovies, newMovie]);
+      if (!response.ok) {
+        throw new Error("Failed to delete the movie.");
+      }
 
-  // Clear the form inputs
-  setNewMovieTitle("");
-  setNewMovieOpeningText("");
-  setNewMovieReleaseDate("");
-};
-
+      // Update the UI by removing the movie from the list
+      setMovies((prevMovies) => prevMovies.filter((movie) => movie.id !== movieId));
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const content = useMemo(() => {
     if (isLoading) {
@@ -100,39 +116,17 @@ const addMovieHandler = (event) => {
       );
     }
     if (movies.length > 0) {
-      return <MoviesList movies={movies} />;
+      return <MoviesList movies={movies} onDeleteMovie={deleteMovieHandler} />;
     }
     return <p>Found no movies.</p>;
-  }, [isLoading, error, retrying, movies, cancelRetryHandler]);
+  }, [isLoading, error, retrying, movies, cancelRetryHandler, deleteMovieHandler]);
 
   return (
     <React.Fragment>
       <section>
-        <form onSubmit={addMovieHandler}>
-          <label>Title:</label>
-          <input
-            type="text"
-            value={newMovieTitle}
-            onChange={(e) => setNewMovieTitle(e.target.value)}
-            required
-          />
-          <label>Opening Text:</label>
-          <textarea
-            value={newMovieOpeningText}
-            onChange={(e) => setNewMovieOpeningText(e.target.value)}
-            required
-          ></textarea>
-          <label>Release Date:</label>
-          <input
-            type="text"
-            value={newMovieReleaseDate}
-            onChange={(e) => setNewMovieReleaseDate(e.target.value)}
-            required
-          />
-          <button type="submit">Add Movie</button>
-        </form>
-        </section>
-        <section>
+        <AddMovie onAddMovie={addMovieHandler} />
+      </section>
+      <section>
         <button onClick={fetchMoviesHandler} disabled={isLoading}>
           Fetch Movies
         </button>
